@@ -1,14 +1,17 @@
+type StatusType = 'Available' | 'Rented' | 'Maintenance';
+
 export class Vehicle {
   #vehicleType: string;
   #rate: number;
-  #rentSchedule: { from: Date; till: Date } | undefined;
-  #maintenanceSchedule: { from: Date; till: Date } | undefined;
+  #scheduledDate: { from: Date; till: Date } | null;
   #id: number;
+  #status: StatusType;
 
   constructor(vehicleType: string, rate: number, id: number) {
     this.#vehicleType = vehicleType;
     this.#rate = rate;
     this.#id = id;
+    this.#status = 'Available';
   }
 
   get id() {
@@ -23,22 +26,14 @@ export class Vehicle {
     return this.#rate;
   }
 
-  checkStatus(from: Date, till: Date) {
-    if (
-      this.#maintenanceSchedule &&
-      from >= this.#maintenanceSchedule.from &&
-      till <= this.#maintenanceSchedule.till
-    ) {
-      return 'Maintenance';
+  checkStatus(from: Date, till: Date): StatusType {
+    if (from > till) {
+      throw new Error('Invalid date range');
     }
-    if (
-      this.#rentSchedule &&
-      from >= this.#rentSchedule.from &&
-      till <= this.#rentSchedule.till
-    ) {
-      return 'Rented';
+    if (!this.#scheduledDate || from >= this.#scheduledDate.till) {
+      return 'Available';
     }
-    return 'Available';
+    return this.#status;
   }
 
   moveToMaintenance(from: Date, till: Date): void {
@@ -49,15 +44,20 @@ export class Vehicle {
     if (status === 'Rented') {
       throw new Error('Vehicle is rented');
     }
-    this.#maintenanceSchedule = { from, till };
+    this.#scheduledDate = { from, till };
+    this.#status = 'Maintenance';
+  }
+
+  moveToAvailable(): void {
+    this.#status = 'Available';
+    this.#scheduledDate = null;
   }
 
   moveFromMaintenance(): void {
-    const status = this.checkStatus(new Date(), new Date());
-    if (status !== 'Maintenance') {
+    if (this.#status !== 'Maintenance') {
       throw new Error('Vehicle is not in maintenance');
     }
-    this.#maintenanceSchedule = undefined;
+    this.moveToAvailable();
   }
 
   rentVehicle(from: Date, till: Date): void {
@@ -68,14 +68,14 @@ export class Vehicle {
     if (status === 'Rented') {
       throw new Error('Vehicle is already rented');
     }
-    this.#rentSchedule = { from, till };
+    this.#scheduledDate = { from, till };
+    this.#status = 'Rented';
   }
 
   returnVehicle(): void {
-    const status = this.checkStatus(new Date(), new Date());
-    if (status !== 'Rented') {
+    if (this.#status !== 'Rented') {
       throw new Error('Vehicle is not rented');
     }
-    this.#rentSchedule = undefined;
+    this.moveToAvailable();
   }
 }
